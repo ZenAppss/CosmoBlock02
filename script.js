@@ -618,45 +618,65 @@ window.addEventListener('keydown', e => {
 
 let touchStartX = 0;
 let touchStartY = 0;
-let touchMoveX = 0;
-let touchMoveY = 0;
-let touchMoved = false;
+let touchAccumulatorX = 0;
+let touchAccumulatorY = 0;
+let isSwiping = false;
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchMoved = false;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchAccumulatorX = 0;
+    touchAccumulatorY = 0;
+    isSwiping = false;
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    touchMoveX = e.touches[0].clientX;
-    touchMoveY = e.touches[0].clientY;
-    touchMoved = true;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    
+    touchAccumulatorX += deltaX;
+    touchAccumulatorY += deltaY;
+    
+    // Atualiza a posição inicial para o próximo frame
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
 
-    const deltaX = touchMoveX - touchStartX;
-    const deltaY = touchMoveY - touchStartY;
-
-    // Movimento horizontal mais sensível
-    if (Math.abs(deltaX) > SQ * 0.6) { // Reduzido de 1.0 para 0.6 para maior sensibilidade
-        movePiece(deltaX > 0 ? 1 : -1, 0);
-        touchStartX = touchMoveX; 
+    // Se moveu mais de 10px, consideramos um deslize (swipe) e não um toque (tap)
+    if (Math.abs(touchAccumulatorX) > 10 || Math.abs(touchAccumulatorY) > 10) {
+        isSwiping = true;
     }
 
-    // Soft drop mais responsivo
-    if (deltaY > SQ * 0.5) { // Reduzido de 1.0 para 0.5
-        movePiece(0, 1);
-        touchStartY = touchMoveY;
+    // Sensibilidade Horizontal (ajustada para ser mais precisa)
+    const horizontalThreshold = SQ * 0.5; // Move a cada meio bloco de deslize
+    if (Math.abs(touchAccumulatorX) >= horizontalThreshold) {
+        const steps = Math.floor(Math.abs(touchAccumulatorX) / horizontalThreshold);
+        for(let i = 0; i < steps; i++) {
+            movePiece(touchAccumulatorX > 0 ? 1 : -1, 0);
+        }
+        // Mantém o resto para o próximo movimento ser fluido
+        touchAccumulatorX %= horizontalThreshold;
+    }
+
+    // Sensibilidade Vertical (Soft Drop)
+    const verticalThreshold = SQ * 0.4;
+    if (touchAccumulatorY >= verticalThreshold) {
+        const steps = Math.floor(touchAccumulatorY / verticalThreshold);
+        for(let i = 0; i < steps; i++) {
+            movePiece(0, 1);
+        }
+        touchAccumulatorY %= verticalThreshold;
     }
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
-    if (isGameOver) return;
     e.preventDefault();
-    // Se não houve movimento significativo, foi um toque (tap)
-    if (!touchMoved) {
-        rotate(); // Qualquer toque fora do botão agora rotaciona
+    // Se não foi um deslize longo, é um toque para rotacionar
+    if (!isSwiping) {
+        rotate();
     }
 }, { passive: false });
 
