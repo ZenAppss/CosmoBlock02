@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e27">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <title>CosmoBlock - Defenda a Terra</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Reset e Estilos Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            background-color: #000;
+            color: #fff;
+            position: fixed;
+        }
+
+        :root {
+            --neon-cyan: #00ffff;
+            --electric-blue: #0080ff;
+            --energy-beam: #00ff88;
+            --warning-red: #ff3f34;
+            --space-blue: #0a0e27;
+        }
+
+        #game-world {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at center, #1a1a3a 0%, #000 100%);
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Camada de UI */
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            padding: env(safe-area-inset-top) 15px env(safe-area-inset-bottom) 15px;
+        }
+
+        .ui-overlay > * {
+            pointer-events: auto;
+        }
+
+        /* Displays */
+        .score-container {
+            position: absolute;
+            top: calc(env(safe-area-inset-top) + 10px);
+            left: 15px;
+        }
+
+        .score-display {
+            font-size: clamp(16px, 4vw, 24px);
+            font-weight: bold;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .best-score-display {
+            font-size: clamp(10px, 3vw, 14px);
+            color: var(--energy-beam);
+            margin-top: 2px;
+        }
+
+        .level-display {
+            position: absolute;
+            top: calc(env(safe-area-inset-top) + 10px);
+            right: 15px;
+            font-size: clamp(16px, 4vw, 24px);
+            font-weight: bold;
+            color: var(--electric-blue);
+        }
+
+        .next-piece-container {
+            position: absolute;
+            top: 75px;
+            right: 15px;
+            width: 100px; /* Aumentado para dar mais visibilidade */
+            background: rgba(10, 14, 39, 0.9);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .next-piece-label {
+            font-size: 14px; /* Aumentado */
+            font-weight: bold;
+            color: var(--neon-cyan);
+            margin-bottom: 8px;
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+
+        #next-piece-canvas {
+            width: 80px;
+            height: 80px;
+        }
+
+        /* Controles Touch Ergonômicos */
+        .touch-controls {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom) + 20px);
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .control-group {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 250px;
+            padding: 0 20px;
+        }
+
+        .control-button {
+            width: 100%;
+            height: 55px;
+            background: rgba(0, 255, 255, 0.15);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-button:active {
+            transform: scale(0.95);
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 30px var(--neon-cyan);
+        }
+
+        /* Game Over */
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+        }
+
+        .game-over-overlay.active {
+            display: flex;
+        }
+
+        .game-over-title {
+            font-size: 36px;
+            color: var(--warning-red);
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .game-over-button {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: var(--neon-cyan);
+            color: var(--space-blue);
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-5px, -5px); }
+            50% { transform: translate(5px, 5px); }
+            75% { transform: translate(-5px, 5px); }
+        }
+
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-world">
+        <canvas id="game-canvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="score-container">
+                <div class="score-display">SCORE: <span id="score-value">0</span></div>
+                <div class="best-score-display">BEST: <span id="best-score-value">0</span></div>
+            </div>
+
+            <div class="level-display">LVL <span id="level-value">1</span></div>
+            
+            <div class="next-piece-container">
+                <div class="next-piece-label">PRÓXIMA</div>
+                <canvas id="next-piece-canvas"></canvas>
+            </div>
+            
+            <div class="touch-controls" id="touch-controls">
+                <div class="control-group">
+                    <div class="control-button" id="btn-hard-drop">QUEDA RÁPIDA</div>
+                </div>
+            </div>
+            
+            <div class="game-over-overlay" id="game-over">
+                <div class="game-over-title">FIM DE JOGO</div>
+                <div class="game-over-content" style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">PONTOS: <span id="final-score">0</span></div>
+                    <div style="font-size: 18px; opacity: 0.8;">RECORDE: <span id="game-over-best-score">0</span></div>
+                    <div id="new-record" style="display: none; color: #fbc531; font-weight: bold; margin-top: 15px;">★ NOVO RECORDE ★</div>
+                </div>
+                <button class="game-over-button" id="restart-button">REINICIAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
